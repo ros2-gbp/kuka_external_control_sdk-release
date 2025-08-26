@@ -2,6 +2,10 @@
 Changelog for package kuka_external_control_sdk_examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.4.0 (2025-08-26)
+------------------
+* Add KSS (RSI) examples
+
 1.3.1 (2024-05-21)
 ------------------
 * fix gtest dependency
