@@ -14,7 +14,7 @@ set(test_directory ${kss_directory}/test)
 set(target_name "kuka-kss-client-library")
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE )
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "default install path" FORCE)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -36,6 +36,8 @@ set(sources
   ${utils_directory}/src/os-core-udp-communication/tcp_client.cc
   ${kss_directory}/src/eki/client.cc
   ${kss_directory}/src/eki/robot_interface.cc
+  ${kss_directory}/src/mxa/client.cc
+  ${kss_directory}/src/mxa/robot_interface.cc
   ${kss_directory}/src/rsi/endpoint.cc
   ${kss_directory}/src/rsi/robot_interface.cc
   ${kss_directory}/src/message_builder.cc
@@ -61,10 +63,8 @@ target_link_libraries(${target_name}
 target_compile_features(${target_name} INTERFACE cxx_std_17 PRIVATE cxx_std_17)
 
 # Build tests for KSS
-if (CMAKE_TESTING_ENABLED)
-  if (NOT TARGET gtest)
-    add_subdirectory(/usr/src/googletest GTest)
-  endif()
+if(BUILD_TESTING)
+  find_package(GTest)
   enable_testing()
 
   add_executable(
@@ -75,7 +75,7 @@ if (CMAKE_TESTING_ENABLED)
   target_link_libraries(
     test_kss_message_builder
     GTest::gtest_main
-    kuka-kss-client-library
+    kuka-external-control-sdk
     GTest::gtest
   )
 
@@ -88,7 +88,6 @@ if (CMAKE_TESTING_ENABLED)
   target_compile_features(test_kss_message_builder INTERFACE cxx_std_17 PRIVATE cxx_std_17)
 
   include(GoogleTest)
-
   gtest_discover_tests(test_kss_message_builder)
 endif()
 
@@ -97,17 +96,21 @@ install(TARGETS ${target_name} EXPORT SdkExport
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(EXPORT SdkExport NAMESPACE Kuka:: FILE kuka-kss-client-libraryTargets.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kuka-kss-client-library)
+install(EXPORT SdkExport NAMESPACE Kuka::
+    FILE kuka-kss-client-libraryTargets.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kuka-kss-client-library
+)
 
-install(FILES ${CMAKE_CURRENT_LIST_DIR}/cmake/kuka-kss-client-libraryConfig.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kuka-kss-client-library
-        )
+install(FILES
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/kuka-kss-client-libraryConfig.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kuka-kss-client-library
+)
 
 install(DIRECTORY ${kss_directory}/include/
       DESTINATION ${CMAKE_INSTALL_PREFIX}/include
       FILES_MATCHING PATTERN "*.h" PATTERN "*.hh")
 
-if (NOT ${PARENT_DIR} MATCHES ${CMAKE_SOURCE_DIR})
+if(NOT ${PARENT_DIR} MATCHES ${CMAKE_SOURCE_DIR})
     install(DIRECTORY ${common_directory}/include/ ${utils_directory}/include/
       DESTINATION ${CMAKE_INSTALL_PREFIX}/include
       FILES_MATCHING PATTERN "*.h" PATTERN "*.hh")

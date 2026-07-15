@@ -12,23 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KUKA_EXTERNAL_CONTROL__KSS_EKI_COMM_CLIENT_H_
-#define KUKA_EXTERNAL_CONTROL__KSS_EKI_COMM_CLIENT_H_
+#ifndef KUKA__EXTERNAL_CONTROL_SDK__KSS__EKI__CLIENT_H_
+#define KUKA__EXTERNAL_CONTROL_SDK__KSS__EKI__CLIENT_H_
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 
 #include "kuka/external-control-sdk/common/irobot.h"
 #include "kuka/external-control-sdk/common/status.h"
 #include "kuka/external-control-sdk/kss/configuration.h"
-#include "kuka/external-control-sdk/kss/eki/extension.h"
+#include "kuka/external-control-sdk/kss/eki/initialization_data.h"
+#include "kuka/external-control-sdk/kss/status_update.h"
 #include "kuka/external-control-sdk/utils/os-core-udp-communication/tcp_client.h"
 
-namespace kuka::external::control::kss::eki {
+namespace kuka::external::control::kss::eki
+{
 
-enum class CommandType : std::uint8_t {
+enum class CommandType : std::uint8_t
+{
   CONNECT = 0,
   START = 1,
   RESET = 2,
@@ -40,10 +46,12 @@ enum class CommandType : std::uint8_t {
   CHANGE_CYCLE_TIME = 8,
 };
 
-class Client : public os::core::udp::communication::TCPClient {
- public:
-  Client(const std::string& server_address, unsigned short server_port);
-  virtual ~Client() override;
+class Client : public os::core::udp::communication::TCPClient
+{
+public:
+  explicit Client(
+    const std::string & server_address, uint16_t server_port, uint16_t client_port = 0);
+  ~Client() override;
 
   // Initiates EKI connection
   Status Start();
@@ -54,22 +62,23 @@ class Client : public os::core::udp::communication::TCPClient {
   // Stops RSI program
   Status StopRSI();
 
-  Status RegisterEventHandler(std::unique_ptr<EventHandler>&& event_handler);
+  Status RegisterEventHandler(std::unique_ptr<EventHandler> && event_handler);
 
-  Status RegisterEventHandlerExtension(std::unique_ptr<IEventHandlerExtension>&& extension);
+  Status RegisterEventHandlerExtension(std::unique_ptr<IEventHandlerExtension> && extension);
 
-  Status RegisterStatusResponseHandler(std::unique_ptr<IStatusUpdateHandler>&& handler);
+  Status RegisterStatusResponseHandler(std::unique_ptr<IStatusUpdateHandler> && handler);
 
-  // TODO implement functions to get certain data of the returned status
+  // TODO(Svastits) implement functions to get certain data of the returned status
   // Specific to the needs of the application e.g. get error message
 
   Status TurnOnDrives();
   Status TurnOffDrives();
   Status SetCycleTime(CycleTime cycle_time);
 
- private:
+private:
   // Response structures
-  enum EventType {
+  enum EventType
+  {
     STARTED = 0,
     STOPPED = 1,
     CANCELLED = 2,
@@ -85,12 +94,13 @@ class Client : public os::core::udp::communication::TCPClient {
     STATUS = 12,
   };
 
-  struct EventResponse {
+  struct EventResponse
+  {
     EventType event_type;
     char message[128];
   };
 
- private:
+private:
   // Send TCP message and wait for answer
   Status SendMessageAndWait();
 
@@ -107,50 +117,44 @@ class Client : public os::core::udp::communication::TCPClient {
   void StartReceiverThread();
 
   // Handle server event response
-  void HandleEvent(const EventResponse& event);
+  void HandleEvent(const EventResponse & event);
 
   // Receives the EKI server response - with given timeout
   bool Receive(std::chrono::microseconds timeout);
 
   // Override dissect function of Dissector base class
   // Validates incoming packets (handles partial packets, too)
-  int Dissect(char* cursor_ptr, std::size_t available_bytes) override;
+  int Dissect(char * cursor_ptr, std::size_t available_bytes) override;
 
- private:
+private:
   void TearDownConnection();
   bool IsCompatibleWithServer();
-  bool ParseInitMessage(char* data_to_parse);
-  bool ParseEvent(char* data_to_parse);
-  bool ParseStatus(char* data_to_parse);
-  bool ParseMessage(char* data_to_parse);
+  bool ParseInitMessage(char * data_to_parse);
+  bool ParseEvent(char * data_to_parse);
+  bool ParseStatus(char * data_to_parse);
+  bool ParseMessage(char * data_to_parse);
 
- private:
-  static constexpr std::size_t kRecvBuffSize = 4096;
-  static constexpr std::size_t kSendBuffSize = 4096;
+private:
+  static constexpr std::size_t kRecvBuffSize = 3000;
+  static constexpr std::size_t kSendBuffSize = 500;
 
   unsigned char recv_buff_[kRecvBuffSize];
   unsigned char send_buff_[kSendBuffSize];
 
-  static constexpr char simple_req_format_[] = "<External REQTYPE=\"%d\"></External>";
+  static constexpr char general_req_format[] =
+    "<External REQTYPE=\"%d\" CycleTime=\"%d\" ControlMode=\"%d\"></External>\n";
 
-  static constexpr char change_control_mode_req_format_[] =
-      "<External REQTYPE=\"4\" ControlMode=\"%d\"></External>";
-
-  static constexpr char change_cycle_time_req_format_[] =
-      "<External REQTYPE=\"8\" CycleTime=\"%d\"></External>";
-
-  static constexpr char event_resp_format_[] =
-      "<Robot><Response EventID=\"%d\">%[^<]</Response></Robot>";
+  static constexpr char event_resp_format_[] = "<Response EventID=\"%d\">%[^<]</Response>";
 
   static constexpr char status_report_format_[] =
-      "<Robot><Status ControlMode=\"%hhu\" CycleTime=\"%hhu\" DrivesPowered=\"%hhu\" "
-      "EmergencyStop=\"%hhu\" GuardStop=\"%hhu\" InMotion=\"%hhu\" "
-      "MotionPossible=\"%hhu\" OperationMode=\"%hhu\" RobotStopped=\"%hhu\"></Status></Robot>";
+    "<Status ControlMode=\"%hhu\" CycleTime=\"%hhu\" DrivesPowered=\"%hhu\" "
+    "EmergencyStop=\"%hhu\" GuardStop=\"%hhu\" InMotion=\"%hhu\" "
+    "MotionPossible=\"%hhu\" OperationMode=\"%hhu\" RobotStopped=\"%hhu\"></Status>";
   static constexpr uint8_t kStatusReportFieldCount = 9;
 
   static constexpr char kSemanticVersion[] = "1.0.0";
 
-  InitializationData init_data_;
+  EKIInitializationData init_data_;
   EventResponse event_response_;
   StatusUpdate status_update_;
 
@@ -170,6 +174,6 @@ class Client : public os::core::udp::communication::TCPClient {
   bool event_handler_set_ = false;
 };
 
-}  // namespace kuka::external::control::kss
+}  // namespace kuka::external::control::kss::eki
 
-#endif  // KUKA_EXTERNAL_CONTROL__KSS_EKI_COMM_CLIENT_H_
+#endif  // KUKA__EXTERNAL_CONTROL_SDK__KSS__EKI__CLIENT_H_
