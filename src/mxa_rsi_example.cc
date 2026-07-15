@@ -16,8 +16,8 @@
 #include <vector>
 
 #include "event-handlers/control_event_handler.hpp"
-#include "event-handlers/eki_event_handler.hpp"
-#include "kuka/external-control-sdk/kss/eki/robot_interface.h"
+#include "event-handlers/mxa_event_handler.hpp"
+#include "kuka/external-control-sdk/kss/mxa/robot_interface.h"
 
 using external_control_sdk_example::ControlEventHandler;
 using external_control_sdk_example::EventHandlerExtension;
@@ -27,12 +27,13 @@ using kuka::external::control::ReturnCode;
 using kuka::external::control::Status;
 using kuka::external::control::kss::Configuration;
 using kuka::external::control::kss::CycleTime;
-using kuka::external::control::kss::eki::Robot;
+using kuka::external::control::kss::mxa::Robot;
 
 int main()
 {
-  // Specify the IP address of the KLI interface and create a robot interface instance
-  Configuration config{.kli_ip_address = "172.31.1.147"};
+  // Specify the IP address of the KLI interface and create a robot interface
+  // instance
+  Configuration config{.kli_ip_address = "192.168.38.8", .mxa_client_port = 1337};
   Robot rob_if{config};
 
   // Holds status response from robot interface operations
@@ -81,8 +82,8 @@ int main()
     return -1;
   }
 
-  // Set cycle time to 12ms
-  ret = rob_if.SetCycleTime(CycleTime::RSI_12MS);
+  // Set cycle time to 4ms
+  ret = rob_if.SetCycleTime(CycleTime::RSI_4MS);
   if (ret.return_code != ReturnCode::OK)
   {
     std::cerr << "Failed to set cycle time: " << ret.message << std::endl;
@@ -167,7 +168,7 @@ int main()
   }
 
   // Wait for a while to ensure all messages arrive
-  std::this_thread::sleep_for(1s);
+  std::this_thread::sleep_for(10s);
 
   return 0;
 }
